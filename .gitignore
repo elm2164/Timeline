@@ -27,3 +27,4 @@ dist-ssr
 .clasp.json
 appsscript.json
 public/*
+*/dummy/*

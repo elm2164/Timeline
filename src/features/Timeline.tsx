@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useContext, useState } from "react"
 import {
   Box,
   TextField,
@@ -10,12 +10,10 @@ import {
   Link,
 } from "@mui/material"
 import Grid from "@mui/material/Grid2"
+import { LoadingContext } from "provider/Loading"
 import CreateTimeline from "utils/CreateTimeline"
+import GetFights from "utils/GetFights"
 import GetToken from "utils/GetToken"
-import GetUTCTime from "utils/GetUTCTime"
-import ServerScript from "utils/ServerScript"
-// import TestPromise from "utils/TestPromise"
-import { IsObject } from "utils/Validate"
 
 const Timeline = () => {
   const [btnDisabled, setBtnDisabled] = useState(false)
@@ -34,7 +32,10 @@ const Timeline = () => {
     }[]
   >([])
 
+  const loading = useContext(LoadingContext)
+
   const handleClick = useCallback(() => {
+    loading.open()
     setBtnDisabled(true)
     setMessage("")
     setHeader("")
@@ -49,109 +50,45 @@ const Timeline = () => {
         console.log(match)
         const [, logId, fight] = match
 
-        try {
-          GetToken((auth) => {
-            ServerScript("getFights", auth, {
-              logId,
-              fight,
-            })
+        GetToken()
+          .then((auth) => {
+            GetFights(auth, { logId, fight })
               .then((e) => {
-                if (
-                  IsObject(e, "fights", "startTime", "endTime") &&
-                  typeof e.startTime === "number" &&
-                  typeof e.endTime === "number"
-                ) {
-                  const { fights, startTime, endTime } = e
-                  setHeader(
-                    `${new Date(startTime).toLocaleString()} - ${new Date(endTime).toLocaleString()}`,
-                  )
-                  if (Array.isArray(fights)) {
-                    fights.forEach((fight) => {
-                      if (
-                        IsObject(
-                          fight,
-                          "id",
-                          "combatTime",
-                          "kill",
-                          "startTime",
-                          "endTime",
-                          "gameZone",
-                        )
-                      ) {
-                        const {
-                          id,
-                          startTime,
-                          endTime,
-                          kill,
-                          gameZone,
-                          combatTime,
-                        } = fight
-
-                        if (
-                          IsObject(gameZone, "name") &&
-                          typeof id === "number" &&
-                          typeof startTime === "number" &&
-                          typeof endTime === "number" &&
-                          typeof combatTime === "number" &&
-                          typeof kill === "boolean"
-                        ) {
-                          console.log({ fights, startTime, endTime })
-                          setFightsList((item) => {
-                            return [
-                              ...item,
-                              {
-                                logId,
-                                text: `wipe:${id} - ${gameZone.name} ${GetUTCTime(new Date(combatTime))}`,
-                                id,
-                                startTime,
-                                endTime,
-                                kill,
-                              },
-                            ]
-                          })
-                        }
-                      }
-                    })
-                  }
-                }
+                console.log(e)
+                setFightsList(e.fights)
               })
+              .catch((e) => console.error(e))
               .finally(() => {
                 setBtnDisabled(false)
+                loading.close()
               })
           })
-        } catch (e) {
-          setMessage(e.message)
-        }
+          .catch((e) => {
+            setBtnDisabled(false)
+            loading.close()
+            console.error(e)
+          })
+
+        // TestPromise()
+        //   .then((e: any) => {
+        //     console.log(e)
+        //     setFightsList(e.fights)
+        //   })
+        //   .finally(() => {
+        //     setBtnDisabled(false)
+        //     loading.close()
+        //   })
       } else {
         setMessage("Error: URLの形式が間違っています！")
+        loading.close()
         setBtnDisabled(false)
       }
     } else {
       setMessage("Error: URLが入力されていません！")
-      // setFightsList([
-      //   {
-      //     logId: "hoge",
-      //     text: "hogehoge",
-      //     startTime: 123,
-      //     endTime: 456,
-      //     kill: false,
-      //     id: 1,
-      //   },
-      //   {
-      //     logId: "hoge",
-      //     text: "hogehoge",
-      //     startTime: 123,
-      //     endTime: 456,
-      //     kill: true,
-      //     id: 2,
-      //   },
-      // ])
-      // setTimelineUrl(
-      //   "https://docs.google.com/spreadsheets/d/110ab8c8fUZXRgnq2wwPz3Wdcb63XY9e1U-IifaQzumI/edit?gid=124743270#gid=124743270",
-      // )
+      loading.close()
       setBtnDisabled(false)
     }
-  }, [url])
+  }, [loading, url])
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,26 +177,35 @@ const Timeline = () => {
                               console.log(fight.startTime, fight.endTime)
                               const { logId, id, startTime, endTime } = fight
                               setBtnDisabled(true)
+                              loading.open()
+
                               setMessage("")
                               setTimelineUrl("")
 
-                              GetToken((auth) => {
-                                CreateTimeline(auth, {
-                                  logId,
-                                  id,
-                                  startTime,
-                                  endTime,
+                              GetToken()
+                                .then((auth) => {
+                                  CreateTimeline(auth, {
+                                    logId,
+                                    id,
+                                    startTime,
+                                    endTime,
+                                  })
+                                    .then((e) => {
+                                      setTimelineUrl(String(e))
+                                    })
+                                    .catch((e) => {
+                                      setMessage(e.message)
+                                    })
+                                    .finally(() => {
+                                      setBtnDisabled(false)
+                                      loading.close()
+                                    })
                                 })
-                                  .then((e) => {
-                                    setTimelineUrl(String(e))
-                                  })
-                                  .catch((e) => {
-                                    setMessage(e.message)
-                                  })
-                                  .finally(() => {
-                                    setBtnDisabled(false)
-                                  })
-                              })
+                                .catch((e) => {
+                                  setBtnDisabled(false)
+                                  loading.close()
+                                  console.error(e)
+                                })
                             }}
                           >
                             タイムライン作成！

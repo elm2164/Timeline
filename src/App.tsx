@@ -3,12 +3,15 @@
 // import viteLogo from './assets/vite.svg'
 // import './App.css'
 import Index from "pages/IndexPage"
+import Loading from "provider/Loading"
 
 function App() {
   // const [count, setCount] = useState(0)
 
   return (
-    <Index />
+    <Loading>
+      <Index />
+    </Loading>
     // <>
     //   <div>
     //     <a href="https://vite.dev" target="_blank">

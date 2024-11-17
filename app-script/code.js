@@ -313,6 +313,7 @@ const RequestFFLogsAPI = ({ auth, query }) => {
 
 const getToken = () => {
   //curl -u {client_id}:{client_secret} -d grant_type=client_credentials https://ja.fflogs.com/oauth/token
+  console.log("getToken Start")
   const auth = Utilities.base64Encode(`${CLIENT_ID}:${CLIENT_SECRET}`)
   const resp = UrlFetchApp.fetch("https://ja.fflogs.com/oauth/token", {
     contentType: "application/json",
